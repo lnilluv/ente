@@ -195,14 +195,20 @@ class _MLProgressBannerState extends State<MLProgressBanner> {
               const SizedBox(height: 24),
               ClipRRect(
                 borderRadius: BorderRadius.circular(2.5),
-                child: LinearProgressIndicator(
-                  value: showModelDownloadPhase ? 0.0 : progress,
-                  minHeight: 5,
-                  backgroundColor: colorScheme.fillFaint,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    colorScheme.greenBase,
-                  ),
-                ),
+                child: showModelDownloadPhase
+                    ? LinearProgressIndicator(
+                        value: 0.0,
+                        minHeight: 5,
+                        backgroundColor: colorScheme.fillFaint,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colorScheme.greenBase,
+                        ),
+                      )
+                    : _ShimmerProgressBar(
+                        progress: progress,
+                        backgroundColor: colorScheme.fillFaint,
+                        valueColor: colorScheme.greenBase,
+                      ),
               ),
               const SizedBox(height: 8),
               Align(
@@ -237,5 +243,82 @@ class _MLProgressBannerState extends State<MLProgressBanner> {
     });
     _stopPolling();
     localSettings.setMLProgressBannerDismissed(true);
+  }
+}
+
+class _ShimmerProgressBar extends StatefulWidget {
+  final double progress;
+  final Color backgroundColor;
+  final Color valueColor;
+
+  const _ShimmerProgressBar({
+    required this.progress,
+    required this.backgroundColor,
+    required this.valueColor,
+  });
+
+  @override
+  State<_ShimmerProgressBar> createState() => _ShimmerProgressBarState();
+}
+
+class _ShimmerProgressBarState extends State<_ShimmerProgressBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final highlightColor =
+            Color.lerp(widget.valueColor, Colors.white, 0.35)!;
+        return SizedBox(
+          height: 5,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: widget.backgroundColor,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: widget.progress.clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        widget.valueColor,
+                        highlightColor,
+                        widget.valueColor,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                      begin: Alignment(-1.0 + 3.0 * _controller.value, 0),
+                      end: Alignment(3.0 * _controller.value, 0),
+                    ),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
